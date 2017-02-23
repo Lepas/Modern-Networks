@@ -1,0 +1,130 @@
+package com.example.lepas.myapplication;
+
+import android.preference.EditTextPreference;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.text.Editable;
+import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+
+public class MainActivity extends AppCompatActivity {
+
+    @Override
+
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        //ftiaxnoume to textview
+        TextView tv = (TextView)findViewById(R.id.textView2);
+        //kaloume tin methodo setMovementMethod gia na mporei na kanei scroll
+        tv.setMovementMethod(new ScrollingMovementMethod());
+
+        Button send1 = (Button)findViewById(R.id.button);
+        send1.setOnClickListener(new View.OnClickListener()
+        {
+            public void onClick(View v)
+            {
+                //δημιουργουμε ενα editText kai to arxikopoioume
+                final EditText et = (EditText) findViewById(R.id.editText);
+                //trabame to input tou xristi
+                Editable e = et.getText();
+                // kai to pername se ena string gia na mporei na to steilei ston apenanti server
+                String s = e.toString();
+                try
+                {
+                    //ftiaxnoume tin sindesi
+                    final DatagramSocket socket = new DatagramSocket();
+
+                    byte[] buf = new byte[256];
+
+                    buf = s.getBytes();
+                    InetAddress address = InetAddress.getByName("192.168.1.193");
+
+                    final DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 4568);
+
+                    new Thread()
+                    {
+                        public void run()
+                        {
+                            try
+                            {
+                                System.out.println("About to send message");
+                                socket.send(packet);
+                                System.out.println("Sent message");
+                            }
+                            catch (IOException e1)
+                            {
+                                e1.printStackTrace();
+                            }
+                            //kleinoume to socket
+                            socket.close();
+                        }
+                        // kanoume .start gia na ksekinisei to thread
+                    }.start();
+                }
+                catch (SocketException e1) {}
+                catch (UnknownHostException e2) {}
+            }
+        });
+
+        //einai to thread pou ftiaksame
+        Thread t = new Thread (new SocketListener ());
+        t.start();
+    }
+
+
+    class SocketListener implements Runnable {
+        String str;
+
+        public void run() {
+            DatagramSocket socket;
+            DatagramPacket packet;
+            byte[] buf = new byte[256];
+            System.out.println("Thread running");
+
+            try {
+                socket = new DatagramSocket(9090);
+
+                while (true) {
+                    final TextView t = (TextView) findViewById(R.id.textView2);
+
+                    //ftiaxno paketakia
+                    packet = new DatagramPacket(buf, buf.length);
+                    socket.receive(packet);
+                    System.out.println("Received packet");
+
+                    //prosarmwxw to paketo se string gia na mporw na to tipwsw stin othoni gia ton user
+                    String s = new String(packet.getData());
+
+                    //pernoume to keimeno poy iparxei mesa sto textview kai to kanoume concatanate
+                    CharSequence cs = t.getText();
+
+                    //kai to metatrepoume se string
+                    str = cs + "\r\n" + s;
+
+                    t.post(new Runnable() {
+                        public void run() {
+                            t.setText(str);
+                        }
+                    });
+
+                }
+            } catch (IOException e) {
+                Log.e(getClass().getName(), e.getMessage());
+            }
+        }
+
+    }
+}
